@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "toi-la-trang-nguyen-web"
+location: "asia-east1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "postgres"
+      cloudSql:
+        instanceId: "toilantrangnguyen-sql-instance"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

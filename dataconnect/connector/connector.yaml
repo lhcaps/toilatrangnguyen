@@ -1,0 +1,7 @@
+connectorId: default
+generate:
+  javascriptSdk:
+    outputDir: ..\..\toi-la-trang-nguyen-web\dataconnect-generated\js\default-connector
+    package: "@firebasegen/default-connector"
+    packageJsonDir: ..\..\toi-la-trang-nguyen-web
+    react: true
