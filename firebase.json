@@ -6,7 +6,7 @@
     },
     "apphosting": {
       "port": 5002,
-      "rootDirectory": "public"  
+      "rootDirectory": "backend"  
     },
     "auth": {
       "port": 9099
@@ -51,19 +51,20 @@
   },
   "apphosting": [
     {
-      "backendId": "toilatrangnguyenbackend",
-      "rootDir": "public",  
+      "backendId": "toilatrangnguyen",
+      "rootDir": "backend",  
       "ignore": [
         "node_modules",
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": true
     }
   ],
   "hosting": {
-    "public": "public", 
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
