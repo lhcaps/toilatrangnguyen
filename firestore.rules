@@ -1,18 +1,99 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 7, 19);
+
+    // USERS — Thí sinh, Phụ huynh, Giáo viên, Giám thị, Admin
+    match /users/{userId} {
+      // Chính chủ được đọc/ghi hồ sơ của mình
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Admin toàn quyền
+      allow read, write: if request.auth.token.role == 'admin';
     }
+
+    // EXAMS — Thông tin kỳ thi
+    match /exams/{examId} {
+      // Thí sinh chỉ đọc kỳ thi nếu có trong participants
+      allow read: if request.auth != null && resource.data.participants.hasAny([request.auth.uid]);
+      // Giáo viên hoặc admin được tạo/sửa kỳ thi
+      allow create, update, delete: if request.auth != null &&
+        ((request.auth.token.role == 'teacher' && request.auth.uid == resource.data.createdBy) || request.auth.token.role == 'admin');
+    }
+
+    // QUESTIONS — Ngân hàng câu hỏi
+    match /questions/{questionId} {
+      // Chỉ giáo viên hoặc admin được thao tác
+      allow read: if request.auth != null && request.auth.token.role in ['teacher', 'admin'];
+      allow create, update, delete: if request.auth != null &&
+        ((request.auth.token.role == 'teacher' && request.auth.uid == resource.data.creatorId) || request.auth.token.role == 'admin');
+    }
+
+    // SUBMISSIONS — Bài làm của thí sinh
+    match /exams/{examId}/submissions/{userId} {
+      // Thí sinh tạo & xem bài của chính mình
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Giáo viên & admin đọc và chấm bài
+      allow read, update: if request.auth != null && request.auth.token.role in ['teacher', 'admin'];
+    }
+
+    // VIOLATIONS — Biên bản vi phạm
+    match /exams/{examId}/violations/{violationId} {
+      // Giám thị hoặc admin được tạo
+      allow create: if request.auth != null && (request.auth.token.role == 'proctor' || request.auth.token.role == 'admin');
+      // Giám thị, giáo viên môn đó, admin được xem
+      allow read: if request.auth != null && request.auth.token.role in ['proctor', 'teacher', 'admin'];
+    }
+
+    // FEEDBACK — Phản hồi góp ý
+    match /feedback/{feedbackId} {
+      // Người dùng gửi feedback của chính mình
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Được sửa trong 15 phút
+      allow update: if request.auth != null && request.resource.data.userId == request.auth.uid
+        && request.time < resource.data.createdAt + duration.value("15m");
+      // Admin được xem tất cả feedback
+      allow read: if request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // NOTIFICATIONS — Thông báo hệ thống
+    match /notifications/{notificationId} {
+      // Giáo viên hoặc admin gửi
+      allow create: if request.auth != null && request.auth.token.role in ['teacher', 'admin'];
+      // Bất kỳ người dùng đăng nhập đều có thể đọc thông báo
+      allow read: if request.auth != null;
+    }
+
+    // SUPPORT REQUESTS — Yêu cầu hỗ trợ
+    match /supportRequests/{requestId} {
+      // Người dùng tạo yêu cầu của chính mình
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Người dùng chỉ đọc được yêu cầu của chính mình
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Admin toàn quyền xử lý
+      allow read, update, delete: if request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // LOGS — Nhật ký hệ thống
+    match /logs/{logId} {
+      // Chỉ admin được đọc/ghi log
+      allow read, write: if request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // RESULTS — Kết quả thi (nếu có collection riêng)
+    match /results/{resultId} {
+      // Thí sinh chỉ xem kết quả của mình nếu đã công bố
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId &&
+        resource.data.resultsReleased == true
+      );
+      // Phụ huynh có thể xem kết quả con
+      allow read: if request.auth != null &&
+        request.auth.uid == resource.data.parentId &&
+        resource.data.resultsReleased == true;
+      // Giáo viên & admin toàn quyền
+      allow read, write: if request.auth != null && request.auth.token.role in ['teacher', 'admin'];
+    }
+
   }
 }
